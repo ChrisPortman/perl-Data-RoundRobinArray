@@ -5,6 +5,8 @@ package Data::RoundRobinArray;
 use strict;
 use warnings;
 
+my $NUM_REGEX = qr(^\d+(?:\.\d+)?$);
+
 sub new {
     my $class = shift;
     my $elements = shift || die 'Must supply number of elements';
@@ -101,23 +103,17 @@ sub average {
 	my $count;
 	
 	for my $val ( @array ) {
-		if ($code and ref $code eq 'CODE') {
-			#use the suppled code ref to extract a number.
-			eval {
-				$val = $code->($val);
-			};
-			if ( $@ ) {
-				die "Code reference provided to average() died: $!\n";
-			}
-		}
-		
 		#we can only care about numbers.
-		next unless ($val =~ /^\d+$/);
+		$val = $self->_extractNumber($val, $code) or next;
 		
 		$total += $val;
 		$count++;
 	}
 	
+    unless ( defined $total and defined $count ) {
+        return;
+    }
+    
 	if ( $total and $count ) {
 		return ($total / $count);
 	}
@@ -136,18 +132,8 @@ sub total {
 	my $total;
 	
 	for my $val ( @array ) {
-		if ($code and ref $code eq 'CODE') {
-			#use the suppled code ref to extract a number.
-			eval {
-				$val = $code->($val);
-			};
-			if ( $@ ) {
-				die "Code reference provided to average() died: $!\n";
-			}
-		}
-		
 		#we can only care about numbers.
-		next unless ($val =~ /^\d+$/);
+		$val = $self->_extractNumber($val, $code) or next;
 		
 		$total += $val;
 	}
@@ -171,15 +157,23 @@ sub _sortArray {
 	my @array = @{$self->{'array'}};
 	my @sorted;
 	
-	if ( $code and ref($code) eq 'CODE' ) {
-		@sorted = sort { $a <=> $b }
-		          grep { /^\d+$/ } 
-		          map  { $code->($_) }  @array;
-	}
-	else {
-		@sorted = sort { $a <=> $b } 
-		          grep { /^\d+$/ } @array;
-	}
+    if ( $code ) {
+        if ( $code and ref($code) eq 'CODE' ) {
+            @sorted = sort { $a <=> $b }
+                      grep { defined $_ and /$NUM_REGEX/ } 
+                      map  { defined $_ and $code->($_) }  @array;
+        }
+        elsif ( not ref $code or ref $code eq 'Regexp' ) {
+            $code = qr($code) unless ref $code;
+            @sorted = sort { $a <=> $b }
+                      grep { defined $_ and /$NUM_REGEX/ } 
+                      map  { defined $_ and $_ =~ $code ? $& : $_ }  @array;
+        }
+    } 
+    else {
+        @sorted = sort { $a <=> $b } 
+                  grep { /$NUM_REGEX/ } @array;
+    }
 	
 	return wantarray ? @sorted : \@sorted;
 }
@@ -192,6 +186,42 @@ sub _validateArray {
 	}
 	
 	return 1;
+}
+
+sub _extractNumber {
+    my $self = shift;
+    my $val  = shift || return;
+    my $code = shift;
+    
+ 	if ($code) {
+        if (ref $code eq 'CODE') {
+            #use the suppled code ref to extract a number.
+            eval {
+                $val = $code->($val);
+            };
+            if ( $@ ) {
+                die "Code reference provided to average() died: $!\n";
+            }
+        }
+        elsif ( not ref $code or ref $code eq 'Regexp' ) {
+            #Try using the value of code as a regex
+            $code = qr($code) unless ref $code;
+            if ( $val =~ $code ) {
+                $val = $&;
+            }
+            elsif ( $val =~ $NUM_REGEX ) {
+                # The contents of $code wasnt a sub ref and we didnt
+                # match it using $code as a regex.  However, $val is
+                # a number anyway and so we'll use it.  But given
+                # that a $code value was supplied and was not
+                # effective, this may be errornous. Warn on it.
+                warn "The code argument had no effect on $val, but seeing as its a number we'll use it anyway.  Should the code arg have done something?\n";
+            }
+        }
+    }
+
+    return $val if $val =~ $NUM_REGEX;
+    return;
 }
 
 1;

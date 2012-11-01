@@ -9,7 +9,8 @@ my $count = 1;
 
 print 'Enter an age: ';
 
-my $code = sub { my $s = shift; my ($r) = $s =~ /(\d+)/; return $r; };
+#my $code = sub { my $s = shift; my ($r) = $s =~ /(\d+)/; return $r; };
+my $code = qr(\d+);
 
 while (<>) {
 	chomp();
