@@ -10,12 +10,36 @@ my $count = 1;
 print 'Enter an age: ';
 
 #my $code = sub { my $s = shift; my ($r) = $s =~ /(\d+)/; return $r; };
-my $code = qr(\d+);
+my $code = '\d+';
 
 while (<>) {
 	chomp();
-    $rrArray->add($_);
     
+    last if $_ eq 'done';
+    
+    $rrArray->add($_);
+    analyseArray($rrArray);
+    $count++;
+    
+    print 'Enter an age: ';
+}
+
+while ( 1 ) {
+    print 'Enter an index to update: ';
+    my $idx = <>;
+    last unless $idx;
+    
+    print 'Enter a new value: ';
+    my $val = <>;
+    last unless $val;
+    
+    $rrArray->updateIndex($idx, $val);
+    analyseArray($rrArray);
+}
+
+sub analyseArray {
+    my $obj = shift;
+
     print "$count - Entered age is $_\n";
     print "\tSmallest age is: ".$rrArray->smallest($code)."\n";
     print "\tLargest age is: ".$rrArray->largest($code)."\n";
@@ -23,10 +47,8 @@ while (<>) {
     print "\tTotal age is: ".$rrArray->total($code)."\n";
     print "\tArray is: @{$rrArray->getArray()} \n";
     
-    $count++;
-    
-    print 'Enter an age: ';
-}
+    return 1;
+}    
 
 exit;
     

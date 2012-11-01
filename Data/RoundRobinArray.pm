@@ -60,6 +60,28 @@ sub add {
     return 1;
 }
 
+sub updateIndex {
+    # hmm because the array rolls, should the index refer to the index
+    # relative to where the next idx is, or should it be the hard index?
+    my $self = shift;
+    my $idx  = shift;
+    my $val  = shift; #may be undef
+    
+    chomp($idx);
+    chomp($val);
+    
+    unless ( $idx and ( $idx >= 0 and $idx <= $#{$self->{'array'}} ) ) {
+        die "First arg to updateIndex must be a number between 0 and the higest index in the array\n";
+    }
+    
+    $self->{'array'}->[$idx] = $val;
+    
+    $self->_validateArray();
+    
+    return 1;
+}
+    
+
 sub getArray {
 	my $self    = shift;
 	my @array   = @{$self->{'array'}};
